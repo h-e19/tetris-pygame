@@ -454,6 +454,7 @@ def possible_moves(grid, piece, locked_pos):
         ghost_piece.y = 0
 
     display_ghost_piece(moves)
+    return moves
 
 def get_ghost_position(piece, locked_pos, grid):
     ghost = Piece(piece.x, piece.y, piece.shape)
