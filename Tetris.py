@@ -216,7 +216,6 @@ def valid_space(piece, grid):
 # checks if piece is colliding with floor or another piece
 def check_collision(piece, locked_pos):
     formatted = convert_shape_format(piece)
-    print('piece occupies following coordinates:', formatted)
     for x, y in formatted:
         if y +1 >= row or (x, y+1) in locked_pos:
             return True
@@ -225,8 +224,7 @@ def check_collision(piece, locked_pos):
 def out_the_sides(piece):
     piece_pos = convert_shape_format(piece)
     for x, y in piece_pos:
-        if 0 > x  or col <= x:
-            print("piece out the sides at", piece.x, piece.y)
+        if 0 > x  or col < x:
             return True
     return False
 
@@ -424,7 +422,6 @@ def possible_moves(grid, piece, locked_pos):
             #move down till it collides
             for r in range(row):
                 ghost_piece.y += 1
-                print("possible move at ", ghost_piece.x, ghost_piece.y)
                 if check_collision(ghost_piece, locked_pos) and valid_space(ghost_piece, grid):
                     temp = deepcopy(ghost_piece)
                     moves.append((temp, rate(ghost_piece)))
@@ -440,8 +437,6 @@ def possible_moves(grid, piece, locked_pos):
             #move down till it collides
             for r in range(row):
                 ghost_piece.y += 1
-                print("possible move at ", ghost_piece.x, ghost_piece.y)
-
                 if check_collision(ghost_piece, locked_pos) and valid_space(ghost_piece, grid):
                     temp = deepcopy(ghost_piece)
                     moves.append((temp, rate(ghost_piece)))
