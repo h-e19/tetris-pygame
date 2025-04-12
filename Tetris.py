@@ -1,4 +1,7 @@
+import copy
 import random
+from copy import deepcopy
+
 import pygame
 
 """
@@ -20,7 +23,7 @@ pygame.font.init()
 # global variables
 
 col = 10  # 10 columns
-row = 20  # 20 rows
+row = 10  # 20 rows
 s_width = 800  # window width
 s_height = 750  # window height
 play_width = 300  # play window width; 300/10 = 30 width per block
@@ -210,6 +213,22 @@ def valid_space(piece, grid):
                 return False
     return True
 
+# checks if piece is colliding with floor or another piece
+def check_collision(piece, locked_pos):
+    formatted = convert_shape_format(piece)
+    print('piece occupies following coordinates:', formatted)
+    for x, y in formatted:
+        if y +1 >= row or (x, y+1) in locked_pos:
+            return True
+    return False
+
+def out_the_sides(piece):
+    piece_pos = convert_shape_format(piece)
+    for x, y in piece_pos:
+        if 0 > x  or col <= x:
+            print("piece out the sides at", piece.x, piece.y)
+            return True
+    return False
 
 # check if piece is out of board
 def check_lost(positions):
@@ -227,7 +246,7 @@ def get_shape():
 
 # draws text in the middle
 def draw_text_middle(text, size, color, surface):
-    font = pygame.font.Font(fontpath, size, bold=False, italic=True)
+    font = pygame.font.Font(fontpath, size)
     label = font.render(text, 1, color)
 
     surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2), top_left_y + play_height/2 - (label.get_height()/2)))
@@ -306,7 +325,7 @@ def draw_window(surface, grid, score=0, last_score=0):
     surface.fill((0, 0, 0))  # fill the surface with black
 
     pygame.font.init()  # initialise font
-    font = pygame.font.Font(fontpath_mario, 65, bold=True)
+    font = pygame.font.Font(fontpath_mario, 65)
     label = font.render('TETRIS', 1, (255, 255, 255))  # initialise 'Tetris' text with white
 
     surface.blit(label, ((top_left_x + play_width / 2) - (label.get_width() / 2), 30))  # put surface on the center of the window
@@ -366,21 +385,102 @@ def get_max_score():
 
     return score
 
+# returns the x,y of the square on the piece that will land first
+#def get_landing_square(piece):
+
+def display_ghost_piece(moves):
+    for move in moves:
+        piece, score = move
+        display_ghost_piece_single(piece)
+
+
+def display_ghost_piece_single(piece):
+    grid = [['-' for _ in range(col)] for _ in range(row)]
+    piece_pos = convert_shape_format(piece)
+
+    for x, y in piece_pos:
+        grid[y][x] = 'o'  # grid[row][col] → grid[y][x]
+
+    for r in range(row):
+        for c in range(col):
+            print(grid[r][c], end=' ')
+        print()
+    print()
+
+
+def rate(piece):
+    return 1
+
+# makes a list of all possible moves and returns the highest rated move
+def possible_moves(grid, piece, locked_pos):
+    moves = []
+    ghost_piece = copy.deepcopy(piece)
+
+    # for all orientations
+    for n in range(len(ghost_piece.shape)):
+    # move right until ghost piece hits wall
+        while not out_the_sides(ghost_piece):
+            ghost_piece.x += 1
+            #move down till it collides
+            for r in range(row):
+                ghost_piece.y += 1
+                print("possible move at ", ghost_piece.x, ghost_piece.y)
+                if check_collision(ghost_piece, locked_pos) and valid_space(ghost_piece, grid):
+                    temp = deepcopy(ghost_piece)
+                    moves.append((temp, rate(ghost_piece)))
+                    ghost_piece.y = 0
+                    break
+        #resett
+        ghost_piece.x = 5
+        ghost_piece.y = 0
+
+        #move left until ghost piece hits wall
+        while not out_the_sides(ghost_piece):
+            ghost_piece.x -= 1
+            #move down till it collides
+            for r in range(row):
+                ghost_piece.y += 1
+                print("possible move at ", ghost_piece.x, ghost_piece.y)
+
+                if check_collision(ghost_piece, locked_pos) and valid_space(ghost_piece, grid):
+                    temp = deepcopy(ghost_piece)
+                    moves.append((temp, rate(ghost_piece)))
+                    ghost_piece.y=0
+                    break
+
+        ghost_piece.rotation = ghost_piece.rotation + 1 % len(ghost_piece.shape)
+        #reset piece to top middle
+        ghost_piece.x = 5
+        ghost_piece.y = 0
+
+    display_ghost_piece(moves)
+
+def get_ghost_position(piece, locked_pos, grid):
+    ghost = Piece(piece.x, piece.y, piece.shape)
+    ghost.rotation = piece.rotation
+
+    while True:
+        ghost.y += 1
+        if check_collision(ghost, locked_pos):
+            ghost.y -= 1
+            break
+    return convert_shape_format(ghost)
 
 def main(window):
     locked_positions = {}
-    create_grid(locked_positions)
+    grid = create_grid(locked_positions)
 
     change_piece = False
     run = True
     current_piece = get_shape()
     next_piece = get_shape()
-    clock = pygame.time.Clock()
+    clock = pygame.     time.Clock()
     fall_time = 0
     fall_speed = 0.35
     level_time = 0
     score = 0
     last_score = get_max_score()
+    possible_moves(grid, current_piece, locked_positions)
 
     while run:
         # need to constantly make new grid as locked positions always change
@@ -451,6 +551,7 @@ def main(window):
                 locked_positions[p] = current_piece.color       # add the key and value in the dictionary
             current_piece = next_piece
             next_piece = get_shape()
+            possible_moves(grid, current_piece, locked_positions)
             change_piece = False
             score += clear_rows(grid, locked_positions) * 10    # increment score by 10 for every row cleared
             update_score(score)
