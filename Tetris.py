@@ -30,6 +30,19 @@ play_width = 300  # play window width; 300/10 = 30 width per block
 play_height = 600  # play window height; 600/20 = 20 height per block
 block_size = 30  # size of block
 
+up = (0, -1)
+right = (1, 0)
+left = (-1, 0)
+down = (0, 1)
+
+DIRECTION_NAMES = {
+    (0, 1): "down",
+    (0, -1): "up",
+    (-1, 0): "left",
+    (1, 0): "right"
+    # Add diagonals if needed
+}
+
 top_left_x = (s_width - play_width) // 2
 top_left_y = s_height - play_height - 50
 
@@ -224,7 +237,7 @@ def check_collision(piece, locked_pos):
 def out_the_sides(piece):
     piece_pos = convert_shape_format(piece)
     for x, y in piece_pos:
-        if 0 > x  or col < x:
+        if 0 > x  or col <= x:
             return True
     return False
 
@@ -383,16 +396,23 @@ def get_max_score():
 
     return score
 
-# returns the x,y of the square on the piece that will land first
-#def get_landing_square(piece):
+
+class Move(object):
+    def __init__(self, piece, rating, directions):
+        self.piece = piece
+        self.rating = rating
+        self.directions = directions
+
+    def __iter__(self):
+        return iter((self.piece, self.rating, self.directions))
 
 def display_ghost_piece(moves):
     for move in moves:
-        piece, score = move
-        display_ghost_piece_single(piece)
+        piece, score, directions = move
+        display_ghost_piece_single(piece, directions)
 
 
-def display_ghost_piece_single(piece):
+def display_ghost_piece_single(piece, directions):
     grid = [['-' for _ in range(col)] for _ in range(row)]
     piece_pos = convert_shape_format(piece)
 
@@ -404,6 +424,8 @@ def display_ghost_piece_single(piece):
             print(grid[r][c], end=' ')
         print()
     print()
+    readable = [DIRECTION_NAMES.get(d, str(d)) for d in directions]
+    print(" ".join(readable))
 
 
 def rate(piece):
@@ -413,35 +435,27 @@ def rate(piece):
 def possible_moves(grid, piece, locked_pos):
     moves = []
     ghost_piece = copy.deepcopy(piece)
-
     # for all orientations
     for n in range(len(ghost_piece.shape)):
-    # move right until ghost piece hits wall
+        directions = []
+        # move right until ghost piece hits wall
         while not out_the_sides(ghost_piece):
-            ghost_piece.x += 1
             #move down till it collides
-            for r in range(row):
-                ghost_piece.y += 1
-                if check_collision(ghost_piece, locked_pos) and valid_space(ghost_piece, grid):
-                    temp = deepcopy(ghost_piece)
-                    moves.append((temp, rate(ghost_piece)))
-                    ghost_piece.y = 0
-                    break
-        #resett
+            drop(ghost_piece, directions, moves, locked_pos, grid)
+            ghost_piece.x += 1
+            directions.append(right)
+
+        #reset
         ghost_piece.x = 5
         ghost_piece.y = 0
+        directions.clear()
 
         #move left until ghost piece hits wall
         while not out_the_sides(ghost_piece):
             ghost_piece.x -= 1
+            directions.append(left)
             #move down till it collides
-            for r in range(row):
-                ghost_piece.y += 1
-                if check_collision(ghost_piece, locked_pos) and valid_space(ghost_piece, grid):
-                    temp = deepcopy(ghost_piece)
-                    moves.append((temp, rate(ghost_piece)))
-                    ghost_piece.y=0
-                    break
+            drop(ghost_piece, directions, moves, locked_pos, grid)
 
         ghost_piece.rotation = ghost_piece.rotation + 1 % len(ghost_piece.shape)
         #reset piece to top middle
@@ -449,6 +463,18 @@ def possible_moves(grid, piece, locked_pos):
         ghost_piece.y = 0
 
     display_ghost_piece(moves)
+    return moves
+
+def drop(ghost_piece, directions, moves, locked_pos, grid):
+    directions_down = []
+    while valid_space(ghost_piece, grid):
+        if check_collision(ghost_piece, locked_pos):
+            temp = deepcopy(ghost_piece)
+            moves.append( Move (temp, rate(ghost_piece), deepcopy(directions) + deepcopy(directions_down) ) )
+            ghost_piece.y = 0
+            return
+        ghost_piece.y += 1
+        directions_down.append(down)
 
 def get_ghost_position(piece, locked_pos, grid):
     ghost = Piece(piece.x, piece.y, piece.shape)
@@ -468,6 +494,7 @@ def main(window):
     change_piece = False
     run = True
     current_piece = get_shape()
+    possible_moves(grid, current_piece, locked_positions)
     next_piece = get_shape()
     clock = pygame.     time.Clock()
     fall_time = 0
@@ -475,7 +502,6 @@ def main(window):
     level_time = 0
     score = 0
     last_score = get_max_score()
-    possible_moves(grid, current_piece, locked_positions)
 
     while run:
         # need to constantly make new grid as locked positions always change
