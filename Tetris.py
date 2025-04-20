@@ -27,7 +27,7 @@ row = 10  # 20 rows
 s_width = 800  # window width
 s_height = 750  # window height
 play_width = 300  # play window width; 300/10 = 30 width per block
-play_height = 600  # play window height; 600/20 = 20 height per block
+play_height = 300  # play window height; 300/10 = 30 height per block
 block_size = 30  # size of block
 
 up = (0, -1)
@@ -429,9 +429,9 @@ def display_ghost_piece_single(piece, directions):
 
 
 def rate(piece):
-    return 1
+    return random.randint(1,10) #using random rating temporaily
 
-# makes a list of all possible moves and returns the highest rated move
+# makes a list of all possible moves 
 def possible_moves(grid, piece, locked_pos):
     moves = []
     ghost_piece = copy.deepcopy(piece)
@@ -465,6 +465,10 @@ def possible_moves(grid, piece, locked_pos):
     display_ghost_piece(moves)
     return moves
 
+def best_move(moves): #returns best move 
+    best_move = max(moves, key=lambda move: move.rating)
+    return best_move
+
 def drop(ghost_piece, directions, moves, locked_pos, grid):
     directions_down = []
     while valid_space(ghost_piece, grid):
@@ -487,6 +491,16 @@ def get_ghost_position(piece, locked_pos, grid):
             break
     return convert_shape_format(ghost)
 
+def execute_move(grid,move,piece):
+    # move -> piece, rating, directions
+    for d in move.directions:
+        piece.x += d[0]
+        piece.y += d[1] 
+        if not valid_space(piece, grid): 
+            piece.x -= d[0]
+            piece.y -= d[1]
+            break
+        
 def main(window):
     locked_positions = {}
     grid = create_grid(locked_positions)
@@ -494,7 +508,7 @@ def main(window):
     change_piece = False
     run = True
     current_piece = get_shape()
-    possible_moves(grid, current_piece, locked_positions)
+    possiblemoves=possible_moves(grid, current_piece, locked_positions)
     next_piece = get_shape()
     clock = pygame.     time.Clock()
     fall_time = 0
@@ -551,12 +565,27 @@ def main(window):
                     current_piece.y += 1
                     if not valid_space(current_piece, grid):
                         current_piece.y -= 1
+                        
+                elif event.key == pygame.K_SPACE: 
+                    # direct drop
+                    while valid_space(current_piece,grid):
+                        current_piece.y += 1
+                    if not valid_space(current_piece, grid):
+                        current_piece.y -= 1
 
                 elif event.key == pygame.K_UP:
                     # rotate shape
                     current_piece.rotation = current_piece.rotation + 1 % len(current_piece.shape)
                     if not valid_space(current_piece, grid):
                         current_piece.rotation = current_piece.rotation - 1 % len(current_piece.shape)
+                        
+                elif event.key == pygame.K_a: //AI MOVE
+                    # direct drop
+                    move=best_move(possiblemoves)
+                    execute_move(grid,move,current_piece)
+                    if not valid_space(current_piece, grid):
+                        current_piece.y -= 1
+                
 
         piece_pos = convert_shape_format(current_piece)
 
@@ -572,7 +601,7 @@ def main(window):
                 locked_positions[p] = current_piece.color       # add the key and value in the dictionary
             current_piece = next_piece
             next_piece = get_shape()
-            possible_moves(grid, current_piece, locked_positions)
+            possiblemoves=possible_moves(grid, current_piece, locked_positions)
             change_piece = False
             score += clear_rows(grid, locked_positions) * 10    # increment score by 10 for every row cleared
             update_score(score)
