@@ -579,7 +579,7 @@ def main(window):
                     if not valid_space(current_piece, grid):
                         current_piece.rotation = current_piece.rotation - 1 % len(current_piece.shape)
                         
-                elif event.key == pygame.K_a: //AI MOVE
+                elif event.key == pygame.K_a: ##AI MOVE
                     # direct drop
                     move=best_move(possiblemoves)
                     execute_move(grid,move,current_piece)
