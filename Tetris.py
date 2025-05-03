@@ -404,18 +404,19 @@ def get_max_score():
 
 
 class Move(object):
-    def __init__(self, piece, rating, directions):
+    def __init__(self, piece, rating, directions, grid_lockedpos):
         self.piece = piece
         self.rating = rating
         self.directions = directions
+        self.grid_lockedpos = grid_lockedpos
 
     def __iter__(self):
-        return iter((self.piece, self.rating, self.directions))
+        return iter((self.piece, self.rating, self.directions, self.grid_lockedpos))
 
 
 def display_ghost_piece(moves):
     for move in moves:
-        piece, score, directions = move
+        piece, score, directions, loc_pos = move
         display_ghost_piece_single(piece, directions)
 
 
@@ -435,9 +436,15 @@ def display_ghost_piece_single(piece, directions):
     print(" ".join(readable))
 
 
-def rate(piece):
+def rate_dellacherie(piece): #handtuned
     rating = - piece.y + eroded_piece_cells(piece) - row_transitions(piece) - column_transitions(piece) - 4 * holes(
         piece) - board_wells(piece)
+
+    return rating
+
+def rate_weights(piece, weights): #weights = list of 6 weights
+    rating = weights[0]*piece.y + weights[1]*eroded_piece_cells(piece) + weights[2]*row_transitions(piece) + weights[3]*column_transitions(piece) + weights[4]* holes(
+        piece) + weights[5]*board_wells(piece)
 
     return rating
 
@@ -496,18 +503,26 @@ def possible_moves(grid, piece, locked_pos):
     display_ghost_piece(moves)
     return moves
 
-
 def best_move(moves):  # returns best move
     best_move = max(moves, key=lambda move: move.rating)
     return best_move
 
+def new_grid(locked_pos, piece):
+    new_lockedpos=deepcopy(locked_pos)
+    positions=convert_shape_format(piece)
+    for pos in positions:
+        p = (pos[0], pos[1])
+        new_lockedpos[p] = piece.color
+    return new_lockedpos
 
 def drop(ghost_piece, directions, moves, locked_pos, grid):
     directions_down = []
     while valid_space(ghost_piece, grid):
         if check_collision(ghost_piece, locked_pos):
             temp = deepcopy(ghost_piece)
-            moves.append(Move(temp, rate(ghost_piece), deepcopy(directions) + deepcopy(directions_down)))
+            new_lockedpos = new_grid(locked_pos, temp)
+            moves.append(Move(temp, rate_dellacherie(ghost_piece), deepcopy(directions) + deepcopy(directions_down),new_lockedpos))
+            # moves.append(Move(temp, rate_dellacherie(ghost_piece), deepcopy(directions) + deepcopy(directions_down)))
             ghost_piece.y = 0
             return
         ghost_piece.y += 1
@@ -552,8 +567,10 @@ def main(window):
     level_time = 0
     score = 0
     last_score = get_max_score()
+    
+    ai_move_key=False
 
-    while run:
+    while run:    
         # need to constantly make new grid as locked positions always change
         grid = create_grid(locked_positions)
 
@@ -580,12 +597,18 @@ def main(window):
                 change_piece = True
 
         for event in pygame.event.get():
+                    
             if event.type == pygame.QUIT:
                 run = False
                 pygame.display.quit()
                 quit()
-
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a: 
+                    ai_move_key=True
+                else: 
+                    ai_move_key=False
+                
+                
                 if event.key == pygame.K_LEFT:
                     current_piece.x -= 1  # move x position left
                     if not valid_space(current_piece, grid):
@@ -615,13 +638,20 @@ def main(window):
                     if not valid_space(current_piece, grid):
                         current_piece.rotation = current_piece.rotation - 1 % len(current_piece.shape)
 
-                elif event.key == pygame.K_a:  ##AI MOVE
-                    # direct drop
-                    move = best_move(possiblemoves)
-                    execute_move(grid, move, current_piece)
-                    if not valid_space(current_piece, grid):
-                        current_piece.y -= 1
+                # elif event.key == pygame.K_a:  ##AI MOVE
+                #     # direct drop
+                #     ai_move_key=True
+                #     move = best_move(possiblemoves)
+                #     execute_move(grid, move, current_piece)
+                #     if not valid_space(current_piece, grid):
+                #         current_piece.y -= 1
 
+        if (ai_move_key==True):
+            move = best_move(possiblemoves)
+            execute_move(grid, move, current_piece)
+            if not valid_space(current_piece, grid):
+                current_piece.y -= 1
+        
         piece_pos = convert_shape_format(current_piece)
 
         # draw the piece on the grid by giving color in the piece locations
@@ -655,7 +685,6 @@ def main(window):
     pygame.display.update()
     pygame.time.delay(2000)  # wait for 2 seconds
     pygame.quit()
-
 
 def main_menu(window):
     run = True
