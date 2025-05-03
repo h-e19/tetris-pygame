@@ -449,8 +449,25 @@ def rate_weights(piece, weights): #weights = list of 6 weights
     return rating
 
 
-def eroded_piece_cells(piece):
-    return 1
+def check_cleared(locked_pos: dict):     
+    clear_lines=[]
+    coords=list(locked_pos.keys())
+    for y in range(10):
+        filled = sum(1 for pos in coords if pos[1]==y)
+        if filled == 10:
+            clear_lines.append(y)   
+    return clear_lines
+
+def eroded_piece_cells(piece, newlockedpos:dict):
+    cleared_lines=check_cleared(newlockedpos)
+    
+    count=0 #num of cells of new piece involved in lines cleared
+    piece_pos = convert_shape_format(piece)
+    for x,y in piece_pos:
+        if y in cleared_lines:
+            count +=1
+    eroded_cells = len(cleared_lines) * count
+    return eroded_cells
 
 
 def row_transitions(piece):
