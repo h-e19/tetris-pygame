@@ -40,13 +40,16 @@ class CrossEntropy:
     def generate_samples(self, samplesize):
         weights_samples=np.random.normal(self.mean, self.stds, size=(samplesize, 6)) #generates n vectors of size 6 (n games)
         return weights_samples
-    
+        
+    def evaluate(self, samples):
+        #returns fitness using game.play
+        pass
+        
     def selection(self):
         #selects best based on fitness
         pass
-        
-    def evaluate(self, game):
-        #returns fitness using game.play
-        pass
+
+    def update_dist(self): 
+        #changes mean and std dev based on best samples
     
         
