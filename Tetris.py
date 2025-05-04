@@ -417,12 +417,12 @@ class Move(object):
 def display_ghost_piece(moves):
     for move in moves:
         piece, score, directions, loc_pos = move
-        display_ghost_piece_single(piece, directions)
+        display_ghost_piece_single(move, directions)
 
 
-def display_ghost_piece_single(piece, directions):
+def display_ghost_piece_single(move, directions):
     grid = [['-' for _ in range(col)] for _ in range(row)]
-    piece_pos = convert_shape_format(piece)
+    piece_pos = convert_shape_format(move.piece)
 
     for x, y in piece_pos:
         grid[y][x] = 'o'  # grid[row][col] → grid[y][x]
@@ -432,19 +432,22 @@ def display_ghost_piece_single(piece, directions):
             print(grid[r][c], end=' ')
         print()
     print()
+    print('row transitions: ', row_transitions(move), ' column transitions: ', column_transitions(move))
+
     readable = [DIRECTION_NAMES.get(d, str(d)) for d in directions]
     print(" ".join(readable))
 
 
-def rate_dellacherie(piece): #handtuned
-    rating = - piece.y + eroded_piece_cells(piece) - row_transitions(piece) - column_transitions(piece) - 4 * holes(
-        piece) - board_wells(piece)
+def rate_dellacherie(move, grid): #handtuned
+    #rating = - piece.y + eroded_piece_cells(piece) - row_transitions(piece, grid, locked_pos) - column_transitions(piece, grid, locked_pos) - 4 * holes(
+        #piece) - board_wells(piece)
 
+    rating = random.randint(0, 100)
     return rating
 
-def rate_weights(piece, weights): #weights = list of 6 weights
-    rating = weights[0]*piece.y + weights[1]*eroded_piece_cells(piece) + weights[2]*row_transitions(piece) + weights[3]*column_transitions(piece) + weights[4]* holes(
-        piece) + weights[5]*board_wells(piece)
+def rate_weights(move, weights): #weights = list of 6 weights
+    rating = weights[0]*move.piece.y + weights[1]*eroded_piece_cells(move.piece, move.grid_lockedpos) + weights[2]*row_transitions(move) + weights[3]*column_transitions(move) + weights[4]* holes(
+        move.piece) + weights[5]*board_wells(move.piece)
 
     return rating
 
@@ -470,12 +473,27 @@ def eroded_piece_cells(piece, newlockedpos:dict):
     return eroded_cells
 
 
-def row_transitions(piece):
-    return 1
+
+def row_transitions(move):
+    transitions = 0
+    new_grid = create_grid(move.grid_lockedpos)
+    for y in range(row):
+        for x in range(col - 1):
+            if (new_grid[y][x] == (0,0,0) and new_grid[y][x + 1] != (0,0,0)) or (new_grid[y][x] != (0,0,0) and new_grid[y][x + 1] == (0,0,0)):
+                    transitions += 1
+    return transitions
 
 
-def column_transitions(piece):
-    return 1
+
+def column_transitions(move):
+    transitions = 0
+    new_grid = create_grid(move.grid_lockedpos)
+    for x in range(col):
+        for y in range(row-1):
+            if (new_grid[y][x] == (0, 0, 0) and new_grid[y+1][x] != (0, 0, 0)) or (
+                    new_grid[y][x] != (0, 0, 0) and new_grid[y+1][x] == (0, 0, 0)):
+                transitions += 1
+    return transitions
 
 
 def holes(piece):
@@ -516,7 +534,6 @@ def possible_moves(grid, piece, locked_pos):
         # reset piece to top middle
         ghost_piece.x = 5
         ghost_piece.y = 0
-
     display_ghost_piece(moves)
     return moves
 
@@ -537,8 +554,11 @@ def drop(ghost_piece, directions, moves, locked_pos, grid):
     while valid_space(ghost_piece, grid):
         if check_collision(ghost_piece, locked_pos):
             temp = deepcopy(ghost_piece)
-            new_lockedpos = new_grid(locked_pos, temp)
-            moves.append(Move(temp, rate_dellacherie(ghost_piece), deepcopy(directions) + deepcopy(directions_down),new_lockedpos))
+
+            new_move = Move(temp, 0, deepcopy(directions) + deepcopy(directions_down), new_grid(locked_pos, temp))
+            new_move.rating = rate_dellacherie(new_move, grid)
+            moves.append(new_move)
+
             # moves.append(Move(temp, rate_dellacherie(ghost_piece), deepcopy(directions) + deepcopy(directions_down)))
             ghost_piece.y = 0
             return
@@ -572,7 +592,6 @@ def execute_move(grid, move, piece):
 def main(window):
     locked_positions = {}
     grid = create_grid(locked_positions)
-
     change_piece = False
     run = True
     current_piece = get_shape()
