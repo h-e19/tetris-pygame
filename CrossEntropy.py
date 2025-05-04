@@ -1,4 +1,5 @@
 import random
+from Tetris import *
 import numpy as np
 
 POP_SIZE=10
@@ -6,7 +7,13 @@ numOfFactors = 6
 initial_mean = [0 for i in range(numOfFactors)]
 initial_variance= [100 for i in range(numOfFactors)]
 
+
 record_data = [] #mean, var, avg score of generations
+
+win = pygame.display.set_mode((s_width, s_height))
+pygame.display.set_caption('Tetris')
+
+main_menu(win)
 
 class game:
     def __init__(self, weights=[], score=0):
@@ -51,5 +58,5 @@ class CrossEntropy:
 
     def update_dist(self): 
         #changes mean and std dev based on best samples
-    
+        pass
         

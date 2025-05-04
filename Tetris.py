@@ -29,6 +29,7 @@ s_height = 750  # window height
 play_width = 300  # play window width; 300/10 = 30 width per block
 play_height = 300  # play window height; 300/10 = 30 height per block
 block_size = 30  # size of block
+weights = [6,5,4,3,2,1] #placeholder wieghts
 
 up = (0, -1)
 right = (1, 0)
@@ -260,6 +261,7 @@ def get_shape():
 
 # draws text in the middle
 def draw_text_middle(text, size, color, surface):
+    pygame.font.init()
     font = pygame.font.Font(fontpath, size)
     label = font.render(text, 1, color)
 
@@ -436,6 +438,7 @@ def display_ghost_piece_single(move, directions):
 
     readable = [DIRECTION_NAMES.get(d, str(d)) for d in directions]
     print(" ".join(readable))
+    print(move.rating)
 
 
 def rate_dellacherie(move, grid): #handtuned
@@ -497,11 +500,11 @@ def column_transitions(move):
 
 
 def holes(piece):
-    return 1
+    return 0
 
 
 def board_wells(piece):
-    return 1
+    return 0
 
 
 # makes a list of all possible moves
@@ -534,10 +537,15 @@ def possible_moves(grid, piece, locked_pos):
         # reset piece to top middle
         ghost_piece.x = 5
         ghost_piece.y = 0
-    display_ghost_piece(moves)
+    #display_ghost_piece(moves)
+
     return moves
 
 def best_move(moves):  # returns best move
+    #print("possible ratings: ")
+    #for move in moves:
+    #    piece, rating, directions, grid_lockedpos = move
+    #    print(rating)
     best_move = max(moves, key=lambda move: move.rating)
     return best_move
 
@@ -556,9 +564,9 @@ def drop(ghost_piece, directions, moves, locked_pos, grid):
             temp = deepcopy(ghost_piece)
 
             new_move = Move(temp, 0, deepcopy(directions) + deepcopy(directions_down), new_grid(locked_pos, temp))
-            new_move.rating = rate_dellacherie(new_move, grid)
+            new_move.rating = rate_weights(new_move, weights)
             moves.append(new_move)
-
+            display_ghost_piece_single(new_move, directions)
             # moves.append(Move(temp, rate_dellacherie(ghost_piece), deepcopy(directions) + deepcopy(directions_down)))
             ghost_piece.y = 0
             return
@@ -719,8 +727,8 @@ def main(window):
 
     draw_text_middle('You Lost', 40, (255, 255, 255), window)
     pygame.display.update()
-    pygame.time.delay(2000)  # wait for 2 seconds
-    pygame.quit()
+    #pygame.time.delay(2000)  # wait for 2 seconds
+    #pygame.quit()
 
 def main_menu(window):
     run = True
