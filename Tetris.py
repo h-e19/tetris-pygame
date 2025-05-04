@@ -449,8 +449,7 @@ def rate_dellacherie(move, grid): #handtuned
     return rating
 
 def rate_weights(move, weights): #weights = list of 6 weights
-    rating = weights[0]*move.piece.y + weights[1]*eroded_piece_cells(move.piece, move.grid_lockedpos) + weights[2]*row_transitions(move) + weights[3]*column_transitions(move) + weights[4]* holes(
-        move.piece) + weights[5]*board_wells(move.piece)
+    rating = weights[0]*move.piece.y + weights[1]*eroded_piece_cells(move.piece, move.grid_lockedpos) + weights[2]*row_transitions(move) + weights[3]*column_transitions(move) + weights[4]* holes(move.grid_lockedpos) + weights[5]*board_wells(move.grid_lockedpos)
 
     return rating
 
@@ -476,7 +475,6 @@ def eroded_piece_cells(piece, newlockedpos:dict):
     return eroded_cells
 
 
-
 def row_transitions(move):
     transitions = 0
     new_grid = create_grid(move.grid_lockedpos)
@@ -485,7 +483,6 @@ def row_transitions(move):
             if (new_grid[y][x] == (0,0,0) and new_grid[y][x + 1] != (0,0,0)) or (new_grid[y][x] != (0,0,0) and new_grid[y][x + 1] == (0,0,0)):
                     transitions += 1
     return transitions
-
 
 
 def column_transitions(move):
@@ -499,13 +496,52 @@ def column_transitions(move):
     return transitions
 
 
-def holes(piece):
-    return 0
+def colmaxheights(locked_pos:dict): #returns dict of max heights of each col
+    coords=list(locked_pos.keys())
+    max_heights={}
+    for x in range(10):
+        highest_pos = (x,9)
+        for pos in coords:
+            if pos[0]==x and pos[1] < highest_pos[1]: #col
+                highest_pos=pos        
+        max_heights[highest_pos[0]] = highest_pos[1]   
+    #print(max_heights)
+    return max_heights
+    
+def holes(locked_pos):
+    max_heights=colmaxheights(locked_pos)
+    coords=list(locked_pos.keys())
+    holes=0
+    
+    for key in max_heights:
+        filledcount = sum(1 for pos in coords if pos[0]==key) #all filled squares in column
+        heightfrombottom = 10 - max_heights[key]
+        notfilled=heightfrombottom-filledcount        
+        holes += notfilled
+    return holes
 
 
-def board_wells(piece):
-    return 0
-
+def board_wells(locked_pos:dict):
+    max_heights=colmaxheights(locked_pos)
+          
+    wells=[]
+    #compare max heights to check for wells
+    if max_heights[0]-max_heights[1] >= 3: #check first col
+        wells.append((0,max_heights[0]-max_heights[1]))
+    if max_heights[9]-max_heights[8] >= 3: #check last col
+        wells.append((9,max_heights[9]-max_heights[8]))
+    for x in range(1,9): #check second to second last column
+        before = max_heights[x]-max_heights[x-1]
+        after = max_heights[x]-max_heights[x+1]
+        if(before >= 3) and ( after >= 3):
+            well=min(before,after)
+            wells.append((x,well))
+            
+    total=0
+    for col,well in wells:
+        total += (well)*(well+1)/2
+        
+    return total
 
 # makes a list of all possible moves
 def possible_moves(grid, piece, locked_pos):
