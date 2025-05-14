@@ -29,7 +29,6 @@ s_height = 750  # window height
 play_width = 300  # play window width; 300/10 = 30 width per block
 play_height = 300  # play window height; 300/10 = 30 height per block
 block_size = 30  # size of block
-weights = [6,5,4,3,2,1] #placeholder wieghts
 
 up = (0, -1)
 right = (1, 0)
@@ -438,7 +437,7 @@ def display_ghost_piece_single(move, directions):
 
     readable = [DIRECTION_NAMES.get(d, str(d)) for d in directions]
     print(" ".join(readable))
-    print(move.rating)
+    print("rating: ",move.rating, "orientation: ", move.piece.rotation)
 
 
 def rate_dellacherie(move, grid): #handtuned
@@ -544,7 +543,7 @@ def board_wells(locked_pos:dict):
     return total
 
 # makes a list of all possible moves
-def possible_moves(grid, piece, locked_pos):
+def possible_moves(grid, piece, locked_pos, weights):
     moves = []
     ghost_piece = copy.deepcopy(piece)
     # for all orientations
@@ -553,7 +552,7 @@ def possible_moves(grid, piece, locked_pos):
         # move right until ghost piece hits wall
         while not out_the_sides(ghost_piece):
             # move down till it collides
-            drop(ghost_piece, directions, moves, locked_pos, grid)
+            drop(ghost_piece, directions, moves, locked_pos, grid, weights)
             ghost_piece.x += 1
             directions.append(right)
 
@@ -567,21 +566,16 @@ def possible_moves(grid, piece, locked_pos):
             ghost_piece.x -= 1
             directions.append(left)
             # move down till it collides
-            drop(ghost_piece, directions, moves, locked_pos, grid)
+            drop(ghost_piece, directions, moves, locked_pos, grid, weights)
 
         ghost_piece.rotation = ghost_piece.rotation + 1 % len(ghost_piece.shape)
         # reset piece to top middle
         ghost_piece.x = 5
         ghost_piece.y = 0
     #display_ghost_piece(moves)
-
     return moves
 
 def best_move(moves):  # returns best move
-    #print("possible ratings: ")
-    #for move in moves:
-    #    piece, rating, directions, grid_lockedpos = move
-    #    print(rating)
     best_move = max(moves, key=lambda move: move.rating)
     return best_move
 
@@ -593,7 +587,7 @@ def new_grid(locked_pos, piece):
         new_lockedpos[p] = piece.color
     return new_lockedpos
 
-def drop(ghost_piece, directions, moves, locked_pos, grid):
+def drop(ghost_piece, directions, moves, locked_pos, grid, weights):
     directions_down = []
     while valid_space(ghost_piece, grid):
         if check_collision(ghost_piece, locked_pos):
@@ -624,6 +618,7 @@ def get_ghost_position(piece, locked_pos, grid):
 
 def execute_move(grid, move, piece):
     # move -> piece, rating, directions
+    piece.rotation = move.piece.rotation
     for d in move.directions:
         piece.x += d[0]
         piece.y += d[1]
@@ -633,13 +628,13 @@ def execute_move(grid, move, piece):
             break
 
 
-def main(window):
+def main(window, weights):
     locked_positions = {}
     grid = create_grid(locked_positions)
     change_piece = False
     run = True
     current_piece = get_shape()
-    possiblemoves = possible_moves(grid, current_piece, locked_positions)
+    possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
     next_piece = get_shape()
     clock = pygame.time.Clock()
     fall_time = 0
@@ -746,7 +741,7 @@ def main(window):
                 locked_positions[p] = current_piece.color  # add the key and value in the dictionary
             current_piece = next_piece
             next_piece = get_shape()
-            possiblemoves = possible_moves(grid, current_piece, locked_positions)
+            possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
             change_piece = False
             score += clear_rows(grid, locked_positions) * 10  # increment score by 10 for every row cleared
             update_score(score)
@@ -761,12 +756,7 @@ def main(window):
         if check_lost(locked_positions):
             run = False
 
-    draw_text_middle('You Lost', 40, (255, 255, 255), window)
-    pygame.display.update()
-    #pygame.time.delay(2000)  # wait for 2 seconds
-    #pygame.quit()
-
-def main_menu(window):
+def main_menu(window, weights):
     run = True
     while run:
         draw_text_middle('Press any key to begin', 50, (255, 255, 255), window)
@@ -776,13 +766,107 @@ def main_menu(window):
             if event.type == pygame.QUIT:
                 run = False
             elif event.type == pygame.KEYDOWN:
-                main(window)
-
+                score = main(window, weights)
+                break
     pygame.quit()
 
 
 if __name__ == '__main__':
     win = pygame.display.set_mode((s_width, s_height))
     pygame.display.set_caption('Tetris')
+    weights = [6,5,4,3,2,1]
+    main_menu(win, weights)  # start game
 
-    main_menu(win)  # start game
+
+def main_menu_AI(window, weights):
+    run = True
+    score = 0
+    while run:
+        pygame.display.update()
+        score = main_AI(window, weights, run)
+        pygame.quit()
+        break
+    return score
+
+
+def main_AI(window, weights, run_main):
+    locked_positions = {}
+    grid = create_grid(locked_positions)
+    change_piece = False
+    run = True
+    current_piece = get_shape()
+    possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
+    next_piece = get_shape()
+    clock = pygame.time.Clock()
+    fall_time = 0
+    fall_speed = 0.35
+    level_time = 0
+    score = 0
+    last_score = get_max_score()
+
+    ai_move_key = True
+
+    while run:
+        # need to constantly make new grid as locked positions always change
+        grid = create_grid(locked_positions)
+
+        # helps run the same on every computer
+        # add time since last tick() to fall_time
+        fall_time += clock.get_rawtime()  # returns in milliseconds
+        level_time += clock.get_rawtime()
+
+        clock.tick()  # updates clock
+
+        if level_time / 1000 > 5:  # make the difficulty harder every 10 seconds
+            level_time = 0
+            if fall_speed > 0.15:  # until fall speed is 0.15
+                fall_speed -= 0.005
+
+        if fall_time / 1000 > fall_speed:
+            fall_time = 0
+            current_piece.y += 1
+            if not valid_space(current_piece, grid) and current_piece.y > 0:
+                current_piece.y -= 1
+                # since only checking for down - either reached bottom or hit another piece
+                # need to lock the piece position
+                # need to generate new piece
+                change_piece = True
+
+        if (ai_move_key == True):
+            move = best_move(possiblemoves)
+            execute_move(grid, move, current_piece)
+            if not valid_space(current_piece, grid):
+                current_piece.y -= 1
+
+        piece_pos = convert_shape_format(current_piece)
+
+        # draw the piece on the grid by giving color in the piece locations
+        for i in range(len(piece_pos)):
+            x, y = piece_pos[i]
+            if y >= 0:
+                grid[y][x] = current_piece.color
+
+        if change_piece:  # if the piece is locked
+            for pos in piece_pos:
+                p = (pos[0], pos[1])
+                locked_positions[p] = current_piece.color  # add the key and value in the dictionary
+            current_piece = next_piece
+            next_piece = get_shape()
+            possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
+            change_piece = False
+            score += clear_rows(grid, locked_positions) * 10  # increment score by 10 for every row cleared
+            update_score(score)
+
+            if last_score < score:
+                last_score = score
+
+        draw_window(window, grid, score, last_score)
+        draw_next_shape(next_piece, window)
+        pygame.display.update()
+
+        if check_lost(locked_positions):
+            run = False
+            run_main = False
+            pygame.display.quit()
+            quit()
+    return score

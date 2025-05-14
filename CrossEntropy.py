@@ -6,6 +6,8 @@ POP_SIZE=10
 numOfFactors = 6
 initial_mean = [0 for i in range(numOfFactors)]
 initial_variance= [100 for i in range(numOfFactors)]
+weights = [-1,1,-1,-1,-4,-1] #placeholder weights
+
 
 
 record_data = [] #mean, var, avg score of generations
@@ -13,7 +15,9 @@ record_data = [] #mean, var, avg score of generations
 win = pygame.display.set_mode((s_width, s_height))
 pygame.display.set_caption('Tetris')
 
-main_menu(win)
+score = main_menu_AI(win, weights)
+
+print('score: ', score)
 
 class game:
     def __init__(self, weights=[], score=0):
