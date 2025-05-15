@@ -66,10 +66,10 @@ class CrossEntropy:
     def selection(self):
         #selects best based on fitness
         num=int(proportion*self.popsize)
-        sorted(self.population,key=lambda game: game.score, reverse=True)
+        sortedlist=sorted(self.population,key=lambda game: game.score, reverse=True)
         selected=[]
         for i in range(num):
-            selected.append(self.population[i])
+            selected.append(sortedlist[i])
         return selected
 
     def update_dist(self, selected:list[Game]): 
