@@ -603,6 +603,30 @@ def drop(ghost_piece, directions, moves, locked_pos, grid, weights):
         ghost_piece.y += 1
         directions_down.append(down)
 
+def display_ghost_piece(moves):
+    for move in moves:
+        piece, score, directions, loc_pos = move
+        display_ghost_piece_single(move, directions)
+
+
+def display_ghost_piece_single(move, directions):
+    grid = [['-' for _ in range(col)] for _ in range(row)]
+    piece_pos = convert_shape_format(move.piece)
+
+    for x, y in piece_pos:
+        grid[y][x] = 'o'  # grid[row][col] → grid[y][x]
+
+    for r in range(row):
+        for c in range(col):
+            print(grid[r][c], end=' ')
+        print()
+    print()
+    print('row transitions: ', row_transitions(move), ' column transitions: ', column_transitions(move))
+
+    readable = [DIRECTION_NAMES.get(d, str(d)) for d in directions]
+    print(" ".join(readable))
+    print("rating: ", move.rating, "orientation: ", move.piece.rotation)
+r
 
 def get_ghost_position(piece, locked_pos, grid):
     ghost = Piece(piece.x, piece.y, piece.shape)
