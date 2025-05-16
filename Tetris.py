@@ -252,10 +252,14 @@ def check_lost(positions):
             return True
     return False
 
+def get_shape_rand():
+    return Piece(5, 0, random.choice(shapes))
 
 # chooses a shape randomly from shapes list
-def get_shape():
-    return Piece(5, 0, random.choice(shapes))
+def get_shape(shape_index):
+    shape_index = shape_index % len(shapes)
+    shape = shapes[shape_index]
+    return Piece(5, 0, shape)
 
 
 # draws text in the middle
@@ -265,7 +269,7 @@ def draw_text_middle(text, size, color, surface):
     label = font.render(text, 1, color)
 
     surface.blit(label, (
-    top_left_x + play_width / 2 - (label.get_width() / 2), top_left_y + play_height / 2 - (label.get_height() / 2)))
+        top_left_x + play_width / 2 - (label.get_width() / 2), top_left_y + play_height / 2 - (label.get_height() / 2)))
 
 
 # draws the lines of the grid for the game
@@ -346,7 +350,7 @@ def draw_window(surface, grid, score=0, last_score=0):
     label = font.render('TETRIS', 1, (255, 255, 255))  # initialise 'Tetris' text with white
 
     surface.blit(label, (
-    (top_left_x + play_width / 2) - (label.get_width() / 2), 30))  # put surface on the center of the window
+        (top_left_x + play_width / 2) - (label.get_width() / 2), 30))  # put surface on the center of the window
 
     # current score
     font = pygame.font.Font(fontpath, 30)
@@ -437,39 +441,43 @@ def display_ghost_piece_single(move, directions):
 
     readable = [DIRECTION_NAMES.get(d, str(d)) for d in directions]
     print(" ".join(readable))
-    print("rating: ",move.rating, "orientation: ", move.piece.rotation)
+    print("rating: ", move.rating, "orientation: ", move.piece.rotation)
 
 
-def rate_dellacherie(move, grid): #handtuned
-    #rating = - piece.y + eroded_piece_cells(piece) - row_transitions(piece, grid, locked_pos) - column_transitions(piece, grid, locked_pos) - 4 * holes(
-        #piece) - board_wells(piece)
+def rate_dellacherie(move, grid):  # handtuned
+    # rating = - piece.y + eroded_piece_cells(piece) - row_transitions(piece, grid, locked_pos) - column_transitions(piece, grid, locked_pos) - 4 * holes(
+    # piece) - board_wells(piece)
 
     rating = random.randint(0, 100)
     return rating
 
-def rate_weights(move, weights): #weights = list of 6 weights
-    rating = weights[0]*move.piece.y + weights[1]*eroded_piece_cells(move.piece, move.grid_lockedpos) + weights[2]*row_transitions(move) + weights[3]*column_transitions(move) + weights[4]* holes(move.grid_lockedpos) + weights[5]*board_wells(move.grid_lockedpos)
+
+def rate_weights(move, weights):  # weights = list of 6 weights
+    rating = weights[0] * (10-move.piece.y) + weights[1] * eroded_piece_cells(move.piece, move.grid_lockedpos) + weights[
+        2] * row_transitions(move) + weights[3] * column_transitions(move) + weights[4] * holes(move.grid_lockedpos) + \
+             weights[5] * board_wells(move.grid_lockedpos)
 
     return rating
 
 
-def check_cleared(locked_pos: dict):     
-    clear_lines=[]
-    coords=list(locked_pos.keys())
+def check_cleared(locked_pos: dict):
+    clear_lines = []
+    coords = list(locked_pos.keys())
     for y in range(10):
-        filled = sum(1 for pos in coords if pos[1]==y)
+        filled = sum(1 for pos in coords if pos[1] == y)
         if filled == 10:
-            clear_lines.append(y)   
+            clear_lines.append(y)
     return clear_lines
 
-def eroded_piece_cells(piece, newlockedpos:dict):
-    cleared_lines=check_cleared(newlockedpos)
-    
-    count=0 #num of cells of new piece involved in lines cleared
+
+def eroded_piece_cells(piece, newlockedpos: dict):
+    cleared_lines = check_cleared(newlockedpos)
+
+    count = 0  # num of cells of new piece involved in lines cleared
     piece_pos = convert_shape_format(piece)
-    for x,y in piece_pos:
+    for x, y in piece_pos:
         if y in cleared_lines:
-            count +=1
+            count += 1
     eroded_cells = len(cleared_lines) * count
     return eroded_cells
 
@@ -479,8 +487,9 @@ def row_transitions(move):
     new_grid = create_grid(move.grid_lockedpos)
     for y in range(row):
         for x in range(col - 1):
-            if (new_grid[y][x] == (0,0,0) and new_grid[y][x + 1] != (0,0,0)) or (new_grid[y][x] != (0,0,0) and new_grid[y][x + 1] == (0,0,0)):
-                    transitions += 1
+            if (new_grid[y][x] == (0, 0, 0) and new_grid[y][x + 1] != (0, 0, 0)) or (
+                    new_grid[y][x] != (0, 0, 0) and new_grid[y][x + 1] == (0, 0, 0)):
+                transitions += 1
     return transitions
 
 
@@ -488,59 +497,61 @@ def column_transitions(move):
     transitions = 0
     new_grid = create_grid(move.grid_lockedpos)
     for x in range(col):
-        for y in range(row-1):
-            if (new_grid[y][x] == (0, 0, 0) and new_grid[y+1][x] != (0, 0, 0)) or (
-                    new_grid[y][x] != (0, 0, 0) and new_grid[y+1][x] == (0, 0, 0)):
+        for y in range(row - 1):
+            if (new_grid[y][x] == (0, 0, 0) and new_grid[y + 1][x] != (0, 0, 0)) or (
+                    new_grid[y][x] != (0, 0, 0) and new_grid[y + 1][x] == (0, 0, 0)):
                 transitions += 1
     return transitions
 
 
-def colmaxheights(locked_pos:dict): #returns dict of max heights of each col
-    coords=list(locked_pos.keys())
-    max_heights={}
+def colmaxheights(locked_pos: dict):  # returns dict of max heights of each col
+    coords = list(locked_pos.keys())
+    max_heights = {}
     for x in range(10):
-        highest_pos = (x,9)
+        highest_pos = (x, 9)
         for pos in coords:
-            if pos[0]==x and pos[1] < highest_pos[1]: #col
-                highest_pos=pos        
-        max_heights[highest_pos[0]] = highest_pos[1]   
-    #print(max_heights)
+            if pos[0] == x and pos[1] < highest_pos[1]:  # col
+                highest_pos = pos
+        max_heights[highest_pos[0]] = highest_pos[1]
+        # print(max_heights)
     return max_heights
-    
+
+
 def holes(locked_pos):
-    max_heights=colmaxheights(locked_pos)
-    coords=list(locked_pos.keys())
-    holes=0
-    
+    max_heights = colmaxheights(locked_pos)
+    coords = list(locked_pos.keys())
+    holes = 0
+
     for key in max_heights:
-        filledcount = sum(1 for pos in coords if pos[0]==key) #all filled squares in column
+        filledcount = sum(1 for pos in coords if pos[0] == key)  # all filled squares in column
         heightfrombottom = 10 - max_heights[key]
-        notfilled=heightfrombottom-filledcount        
+        notfilled = heightfrombottom - filledcount
         holes += notfilled
     return holes
 
 
-def board_wells(locked_pos:dict):
-    max_heights=colmaxheights(locked_pos)
-          
-    wells=[]
-    #compare max heights to check for wells
-    if max_heights[0]-max_heights[1] >= 3: #check first col
-        wells.append((0,max_heights[0]-max_heights[1]))
-    if max_heights[9]-max_heights[8] >= 3: #check last col
-        wells.append((9,max_heights[9]-max_heights[8]))
-    for x in range(1,9): #check second to second last column
-        before = max_heights[x]-max_heights[x-1]
-        after = max_heights[x]-max_heights[x+1]
-        if(before >= 3) and ( after >= 3):
-            well=min(before,after)
-            wells.append((x,well))
-            
-    total=0
-    for col,well in wells:
-        total += (well)*(well+1)/2
-        
+def board_wells(locked_pos: dict):
+    max_heights = colmaxheights(locked_pos)
+
+    wells = []
+    # compare max heights to check for wells
+    if max_heights[0] - max_heights[1] >= 3:  # check first col
+        wells.append((0, max_heights[0] - max_heights[1]))
+    if max_heights[9] - max_heights[8] >= 3:  # check last col
+        wells.append((9, max_heights[9] - max_heights[8]))
+    for x in range(1, 9):  # check second to second last column
+        before = max_heights[x] - max_heights[x - 1]
+        after = max_heights[x] - max_heights[x + 1]
+        if (before >= 3) and (after >= 3):
+            well = min(before, after)
+            wells.append((x, well))
+
+    total = 0
+    for col, well in wells:
+        total += (well) * (well + 1) / 2
+
     return total
+
 
 # makes a list of all possible moves
 def possible_moves(grid, piece, locked_pos, weights):
@@ -572,20 +583,23 @@ def possible_moves(grid, piece, locked_pos, weights):
         # reset piece to top middle
         ghost_piece.x = 5
         ghost_piece.y = 0
-    #display_ghost_piece(moves)
+    # display_ghost_piece(moves)
     return moves
+
 
 def best_move(moves):  # returns best move
     best_move = max(moves, key=lambda move: move.rating)
     return best_move
 
+
 def new_grid(locked_pos, piece):
-    new_lockedpos=deepcopy(locked_pos)
-    positions=convert_shape_format(piece)
+    new_lockedpos = deepcopy(locked_pos)
+    positions = convert_shape_format(piece)
     for pos in positions:
         p = (pos[0], pos[1])
         new_lockedpos[p] = piece.color
     return new_lockedpos
+
 
 def drop(ghost_piece, directions, moves, locked_pos, grid, weights):
     directions_down = []
@@ -596,7 +610,7 @@ def drop(ghost_piece, directions, moves, locked_pos, grid, weights):
             new_move = Move(temp, 0, deepcopy(directions) + deepcopy(directions_down), new_grid(locked_pos, temp))
             new_move.rating = rate_weights(new_move, weights)
             moves.append(new_move)
-            display_ghost_piece_single(new_move, directions)
+            #display_ghost_piece_single(new_move, directions)
             # moves.append(Move(temp, rate_dellacherie(ghost_piece), deepcopy(directions) + deepcopy(directions_down)))
             ghost_piece.y = 0
             return
@@ -633,19 +647,19 @@ def main(window, weights):
     grid = create_grid(locked_positions)
     change_piece = False
     run = True
-    current_piece = get_shape()
+    current_piece = get_shape_rand()
     possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
-    next_piece = get_shape()
+    next_piece = get_shape_rand()
     clock = pygame.time.Clock()
     fall_time = 0
     fall_speed = 0.35
     level_time = 0
     score = 0
     last_score = get_max_score()
-    
-    ai_move_key=False
 
-    while run:    
+    ai_move_key = False
+
+    while run:
         # need to constantly make new grid as locked positions always change
         grid = create_grid(locked_positions)
 
@@ -672,18 +686,17 @@ def main(window, weights):
                 change_piece = True
 
         for event in pygame.event.get():
-                    
+
             if event.type == pygame.QUIT:
                 run = False
                 pygame.display.quit()
                 quit()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_a: 
-                    ai_move_key=True
-                else: 
-                    ai_move_key=False
-                
-                
+                if event.key == pygame.K_a:
+                    ai_move_key = True
+                else:
+                    ai_move_key = False
+
                 if event.key == pygame.K_LEFT:
                     current_piece.x -= 1  # move x position left
                     if not valid_space(current_piece, grid):
@@ -721,12 +734,12 @@ def main(window, weights):
                 #     if not valid_space(current_piece, grid):
                 #         current_piece.y -= 1
 
-        if (ai_move_key==True):
+        if (ai_move_key == True):
             move = best_move(possiblemoves)
             execute_move(grid, move, current_piece)
             if not valid_space(current_piece, grid):
                 current_piece.y -= 1
-        
+
         piece_pos = convert_shape_format(current_piece)
 
         # draw the piece on the grid by giving color in the piece locations
@@ -740,7 +753,7 @@ def main(window, weights):
                 p = (pos[0], pos[1])
                 locked_positions[p] = current_piece.color  # add the key and value in the dictionary
             current_piece = next_piece
-            next_piece = get_shape()
+            next_piece = get_shape_rand()
             possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
             change_piece = False
             score += clear_rows(grid, locked_positions) * 10  # increment score by 10 for every row cleared
@@ -755,6 +768,7 @@ def main(window, weights):
 
         if check_lost(locked_positions):
             run = False
+
 
 def main_menu(window, weights):
     run = True
@@ -774,29 +788,33 @@ def main_menu(window, weights):
 if __name__ == '__main__':
     win = pygame.display.set_mode((s_width, s_height))
     pygame.display.set_caption('Tetris')
-    weights = [6,5,4,3,2,1]
+    weights = [-5.69905057,   7.46618492,  -4.63437053,  -4.84330416, -42.88340668,
+  -2.34048288]
     main_menu(win, weights)  # start game
 
 
-def main_menu_AI(window, weights):
+def main_menu_AI(window, weights, shape_pattern):
     run = True
     score = 0
     while run:
         pygame.display.update()
-        score = main_AI(window, weights, run)
+        score = main_AI(window, weights, run, shape_pattern)
         pygame.quit()
         break
     return score
 
 
-def main_AI(window, weights, run_main):
+def main_AI(window, weights, run_main, shape_pattern):
     locked_positions = {}
+    shape_index = 0
     grid = create_grid(locked_positions)
     change_piece = False
     run = True
-    current_piece = get_shape()
+    current_piece = get_shape(shape_pattern[shape_index])
+    shape_index=shape_index+1
     possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
-    next_piece = get_shape()
+    next_piece = get_shape(shape_pattern[shape_index])
+    shape_index=shape_index +1
     clock = pygame.time.Clock()
     fall_time = 0
     fall_speed = 0.35
@@ -851,7 +869,9 @@ def main_AI(window, weights, run_main):
                 p = (pos[0], pos[1])
                 locked_positions[p] = current_piece.color  # add the key and value in the dictionary
             current_piece = next_piece
-            next_piece = get_shape()
+            next_piece = get_shape(shape_pattern[shape_index])
+            shape_index = (shape_index + 1) % len(shape_pattern)
+
             possiblemoves = possible_moves(grid, current_piece, locked_positions, weights)
             change_piece = False
             score += clear_rows(grid, locked_positions) * 10  # increment score by 10 for every row cleared
@@ -868,5 +888,4 @@ def main_AI(window, weights, run_main):
             run = False
             run_main = False
             pygame.display.quit()
-            quit()
     return score
