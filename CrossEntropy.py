@@ -31,12 +31,12 @@ class Game:
         self.weights = weights
         self.score = score
 
-    def play(self):
+    def play(self, shape_pattern):
         # plays game and returns score
         win = pygame.display.set_mode((s_width, s_height))
         pygame.display.set_caption('Tetris')
 
-        self.score = main_menu_AI(win, self.weights)
+        self.score = main_menu_AI(win, self.weights, shape_pattern)
 
         print('score: ', self.score)
 
@@ -63,9 +63,9 @@ class CrossEntropy:
 
         self.population = new_population
 
-    def evaluate(self):
+    def evaluate(self, shape_pattern):
         for game in self.population:
-            game.play()
+            game.play(shape_pattern)
 
     def selection(self):
         #selects best based on fitness
@@ -110,7 +110,7 @@ class CrossEntropy:
         self.std = [math.sqrt(var) for var in self.variance]
 
     def record_population(self, generation, filename="population.csv"):
-        with open(filename, mode="a", newline="") as file:
+        with open(filename, mode="a") as file:
             writer = csv.writer(file)
             writer.writerow([f"GENERATION {generation + 1}"])
             for individual in self.population:
@@ -120,13 +120,11 @@ class CrossEntropy:
             writer.writerow([])
 
     def record_population_next(self, filename="population_next.csv"):
-        with open(filename, mode="w") as file:
+        with open(filename, mode="w", newline='') as file:
             writer = csv.writer(file)
             for individual in self.population:
                 row = list(individual.weights) + [individual.score]
-                print(row)
                 writer.writerow(row)
-            writer.writerow([])
 
     def load_population(self, filename="population_next.csv"):
         with open(filename, mode="r") as file:
@@ -141,6 +139,11 @@ class CrossEntropy:
                 i = i+1
                 self.population.append(Game(weights=weights, score=score))
 
+    def generate_pattern(self):
+        pattern = [random.randint(0, 10) for _ in range(1000)]
+        return pattern
+
+
     def main(self, generations):
         # initalise population
         self.load_population()
@@ -148,7 +151,8 @@ class CrossEntropy:
         for i in range(generations):
             print(f"\nGENERATION {i + 1} \n")
             # evaluate each game in pop
-            self.evaluate()
+            shape_pattern = self.generate_pattern()
+            self.evaluate(shape_pattern)
 
             # note best score in generation
             bestg = max(self.population, key=lambda game: game.score)
@@ -170,10 +174,11 @@ class CrossEntropy:
             # create new population
             self.set_population()
 
-        self.evaluate()
+        shape_pattern = self.generate_pattern()
+        self.evaluate(shape_pattern)
         self.record_population_next()
 
-number_of_generations = 10
+number_of_generations = 2
 
 ce = CrossEntropy()
 ce.main(number_of_generations)
