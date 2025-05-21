@@ -5,12 +5,13 @@ import math
 import csv
 import statistics
 
-POP_SIZE = 20
+POP_SIZE = 10
 numOfFactors = 6
 initial_mean = [0 for i in range(numOfFactors)]
 initial_variance = [100 for i in range(numOfFactors)]
 initial_std = [math.sqrt(var) for var in initial_variance]
 proportion = 0.25
+min_std = 0.5
 
 weights = [-1, 1, -1, -1, -4, -1]  # placeholder weights
 
@@ -88,7 +89,7 @@ class CrossEntropy:
         # print(columns)
 
         for i in range(6):
-            newstd[i] = statistics.stdev(columns[i])
+            newstd[i] = max(min_std, statistics.stdev(columns[i]))
             newmean[i] = statistics.mean(columns[i])
             newvar[i] = statistics.variance(columns[i])
 
@@ -97,10 +98,8 @@ class CrossEntropy:
         self.std = newstd
 
     def constant_noise(self):
-        noise = 4
-        for var in self.variance:
-            var = var + noise
-
+        noise = 10
+        self.variance = [var + noise for var in self.variance]
         self.std = [math.sqrt(var) for var in self.variance]
 
     def linear_dec_noise(self, gen):
@@ -115,7 +114,6 @@ class CrossEntropy:
             writer.writerow([f"GENERATION {generation + 1}"])
             for individual in self.population:
                 row = list(individual.weights) + [individual.score]
-                print(row)
                 writer.writerow(row)
             writer.writerow([])
 
@@ -150,9 +148,10 @@ class CrossEntropy:
 
         for i in range(generations):
             print(f"\nGENERATION {i + 1} \n")
-            # evaluate each game in pop
-            shape_pattern = self.generate_pattern()
-            self.evaluate(shape_pattern)
+
+            if(i!=0):
+                shape_pattern = self.generate_pattern()
+                self.evaluate(shape_pattern)
 
             # note best score in generation
             bestg = max(self.population, key=lambda game: game.score)
@@ -178,7 +177,7 @@ class CrossEntropy:
         self.evaluate(shape_pattern)
         self.record_population_next()
 
-number_of_generations = 2
+number_of_generations = 50
 
 ce = CrossEntropy()
 ce.main(number_of_generations)

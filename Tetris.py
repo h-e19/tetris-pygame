@@ -453,9 +453,12 @@ def rate_dellacherie(move, grid):  # handtuned
 
 
 def rate_weights(move, weights):  # weights = list of 6 weights
-    rating = weights[0] * (10-move.piece.y) + weights[1] * eroded_piece_cells(move.piece, move.grid_lockedpos) + weights[
-        2] * row_transitions(move) + weights[3] * column_transitions(move) + weights[4] * holes(move.grid_lockedpos) + \
-             weights[5] * board_wells(move.grid_lockedpos)
+    rating = (weights[0] * (10-move.piece.y) +
+              weights[1] * eroded_piece_cells(move.piece, move.grid_lockedpos) +
+              weights[2] * row_transitions(move) +
+              weights[3] * column_transitions(move) +
+              weights[4] * holes(move.grid_lockedpos) +
+              weights[5] * board_wells(move.grid_lockedpos))
 
     return rating
 
@@ -812,8 +815,7 @@ def main_menu(window, weights):
 if __name__ == '__main__':
     win = pygame.display.set_mode((s_width, s_height))
     pygame.display.set_caption('Tetris')
-    weights = [-5.69905057,   7.46618492,  -4.63437053,  -4.84330416, -42.88340668,
-  -2.34048288]
+    weights = [-11.8532530411907,3.7317162378923996,-2.9006617602616984,-7.892329148293438,-10.26546406405411,-2.6443836596405434]
     main_menu(win, weights)  # start game
 
 
