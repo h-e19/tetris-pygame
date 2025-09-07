@@ -5,12 +5,12 @@ import math
 import csv
 import statistics
 
-POP_SIZE = 10
+POP_SIZE = 20
 numOfFactors = 6
 initial_mean = [0 for i in range(numOfFactors)]
 initial_variance = [100 for i in range(numOfFactors)]
 initial_std = [math.sqrt(var) for var in initial_variance]
-proportion = 0.25
+proportion = 0.3
 min_std = 0.5
 
 weights = [-1, 1, -1, -1, -4, -1]  # placeholder weights
@@ -37,9 +37,7 @@ class Game:
         win = pygame.display.set_mode((s_width, s_height))
         pygame.display.set_caption('Tetris')
 
-        self.score = main_menu_AI(win, self.weights, shape_pattern)
-
-        print('score: ', self.score)
+        self.score += main_menu_AI(win, self.weights, shape_pattern)
 
 
 class CrossEntropy:
@@ -54,14 +52,17 @@ class CrossEntropy:
         weights_samples = np.random.normal(self.mean, self.std, size=(samplesize, 6))  # generates n vectors of size 6 (n games)
         return weights_samples
 
-    def set_population(self):
-        weight_samples = self.generate_samples(self.popsize)
-        new_population = [Game() for i in range(self.popsize)]
+    def set_population(self, elites=[]):
+        weight_samples = self.generate_samples(self.popsize-len(elites))
+        new_population = []
 
-        for i in range(self.popsize):
+        for elite in elites:
+            elite.score = 0
+            new_population.append(elite)
+
+        for i in range(self.popsize - len(elites)):
             g1 = Game(weight_samples[i])
-            new_population[i] = g1
-
+            new_population.append(g1)
         self.population = new_population
 
     def evaluate(self, shape_pattern):
@@ -77,7 +78,7 @@ class CrossEntropy:
             selected.append(sortedlist[i])
         return selected
 
-    def update_dist(self, selected: list[Game]):
+    def update_dist(self, selected: list[Game], gen):
         # changes mean and std dev based on best samples
         newmean = [0 for i in range(numOfFactors)]
         newstd = [0 for i in range(numOfFactors)]
@@ -96,16 +97,17 @@ class CrossEntropy:
         self.variance = newvar
         self.mean = newmean
         self.std = newstd
+        self.constant_noise()
+
 
     def constant_noise(self):
-        noise = 10
+        noise = 0.1
         self.variance = [var + noise for var in self.variance]
         self.std = [math.sqrt(var) for var in self.variance]
 
     def linear_dec_noise(self, gen):
         noise = max(0, 5 - (gen / 10))
-        for var in self.variance:
-            var = var + noise
+        self.variance = [var + noise for var in self.variance]
         self.std = [math.sqrt(var) for var in self.variance]
 
     def record_population(self, generation, filename="population.csv"):
@@ -131,7 +133,6 @@ class CrossEntropy:
             for row in reader:
                 if i > POP_SIZE:
                     break
-                print(len(row))
                 weights = list(map(float, row[:6]))
                 score = float(row[6])
                 i = i+1
@@ -141,6 +142,20 @@ class CrossEntropy:
         pattern = [random.randint(0, 10) for _ in range(1000)]
         return pattern
 
+    def avg_evaluate(self, shape_pattern_set):
+        for pattern in shape_pattern_set:
+            self.evaluate(pattern)
+        #average scores
+        for game in self.population:
+            game.score = game.score/len(shape_pattern_set)
+            print(game.score)
+
+    def generate_n_patterns(self, n):
+        shape_pattern_set = []
+        for _ in range(n):
+            shape_pattern_set.append(self.generate_pattern())
+        return shape_pattern_set
+
 
     def main(self, generations):
         # initalise population
@@ -149,9 +164,8 @@ class CrossEntropy:
         for i in range(generations):
             print(f"\nGENERATION {i + 1} \n")
 
-            if(i!=0):
-                shape_pattern = self.generate_pattern()
-                self.evaluate(shape_pattern)
+            shape_pattern_set = self.generate_n_patterns(5)
+            self.avg_evaluate(shape_pattern_set)
 
             # note best score in generation
             bestg = max(self.population, key=lambda game: game.score)
@@ -159,25 +173,22 @@ class CrossEntropy:
 
             # select best proportion p
             selected = self.selection()
+            elites = selected[:2]
 
             # update distribution
-            self.update_dist(selected)
-
-            # add noise
-            self.constant_noise()
-            # self.linear_dec_noise(i)
+            self.update_dist(selected, i+1)
 
             # record data
             self.record_population(i)
 
             # create new population
-            self.set_population()
+            self.set_population(elites)
 
-        shape_pattern = self.generate_pattern()
-        self.evaluate(shape_pattern)
+        shape_pattern_set = self.generate_n_patterns(5)
+        self.avg_evaluate(shape_pattern_set)
         self.record_population_next()
 
-number_of_generations = 50
+number_of_generations = 10
 
 ce = CrossEntropy()
 ce.main(number_of_generations)
